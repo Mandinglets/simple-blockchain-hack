@@ -2,6 +2,16 @@
 import asyncio
 from aioconsole import ainput
 
+import cryptography
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+
+import hashlib
+import codecs
+import base58
+
+
 class ClosingException(Exception):
     pass
 
@@ -9,8 +19,45 @@ class ServerClosingException(Exception):
     pass
 
 class BlockChainClient:
-    def __init__(self, port):
-        self.port = port
+    def __init__(self,
+                    port,
+                    crypto_curve,
+                    signature_algo,
+                    start_reward,
+                    decrease_reward):
+
+        self.PORT = port
+        self.CURVE = crypto_curve
+        self.SIGNATURE_ALGORITHM = signature_algo
+        self.DECREASE_REWAD = decrease_reward
+
+        self.reward = start_reward
+
+        # Start generating private & public key
+        self._private_key = ec.generate_private_key(self.CURVE, default_backend())
+        self.public_key = self._private_key.public_key()
+        self.address = self.generate_address()
+
+    def generate_address(self):
+        # Using the hash stuff from bitcoin wiki
+        actual_key = '02' + format(self.public_key.public_numbers().x, '064x')
+
+        sh = hashlib.sha256()
+        rip = hashlib.new('ripemd160')
+
+        sh.update(codecs.decode(actual_key, 'hex'))
+        rip.update(sh.digest())
+
+        double_hash = '00' + rip.hexdigest()
+        sh.update(codecs.decode(double_hash, 'hex'))
+
+        check_sum_1 = hashlib.sha256(codecs.decode(double_hash, 'hex'))
+        check_sum_2 = hashlib.sha256(check_sum_1.digest())
+        check_sum = check_sum_2.hexdigest()[:8]
+
+        bit_25_address = double_hash + check_sum
+        final_address = base58.b58encode(codecs.decode(bit_25_address, 'hex'))
+        return final_address.decode()
 
     async def send_to_server(self, server):
         while True:
@@ -19,7 +66,6 @@ class BlockChainClient:
                 continue
             server.write(msg.encode())
             await server.drain()
-
 
     async def get_data_server(self, server, client):
         while True:
@@ -52,10 +98,16 @@ class BlockChainClient:
 
 if __name__ == '__main__':
     import argparse
-
     parser = argparse.ArgumentParser(description='Fun Fun Bitcoin')
     parser.add_argument('-p', '--port', dest='port', help='Define the port name')
-
     args = parser.parse_args()
-    client = BlockChainClient(args.port)
+
+    # Getting the configureation
+    CURVE = ec.SECP256K1()
+    SIGNATURE_ALGORITHM = ec.ECDSA(hashes.SHA256())
+    START_REWARD = 50
+    DECREASE_REWARD = 10
+
+    client = BlockChainClient(args.port, CURVE, SIGNATURE_ALGORITHM, START_REWARD, DECREASE_REWARD)
+    print(f"Running on Address: {client.address}")
     client.run()
