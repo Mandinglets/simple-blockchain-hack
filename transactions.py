@@ -32,5 +32,8 @@ class MoneyTransation(Transaction):
     def __str__(self):
         return f"Money Transaction: {self.sender_address} -> {self.receiver_address} with value: {self.value}"
 
+    def __repr__(self):
+        return str(self)
+
     def self_hash(self):
-        return hashlib.sha256(pickle.dumps(self)).hexdigest()
+        return hashlib.sha256(pickle.dumps(str(self))).hexdigest()
