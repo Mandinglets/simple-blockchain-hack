@@ -1,8 +1,5 @@
 # For Client Class -- Code from DAPs only
-import sys, asyncio
-
-class NoneException(Exception):
-    pass
+import asyncio
 
 class ClosingException(Exception):
     pass
@@ -15,17 +12,13 @@ async def open_connection(loop):
 async def use_connection(reader, writer):
     try:
         while True:
-            console_message = input('>> ')
-            if console_message == None or console_message == '':
+            msg = input('>> ')
+            if msg == None or msg == '':
                 continue
-            elif console_message == 'close()':
-                raise ClosingException()
-                
-            writer.write(console_message.encode())
-            data = await reader.read(100)
+
+            writer.write(msg.encode())
+            data = await reader.read(4048)
             print('Received: %r' % data.decode())
-    except ClosingException:
-        print('Got close() from user.')
     except KeyboardInterrupt:
         print('Got Ctrl-C from user.')
     finally:
@@ -37,7 +30,7 @@ def run():
         reader,writer=loop.run_until_complete(open_connection(loop))
         loop.run_until_complete(use_connection(reader, writer))
     except Exception as e:
-        print(e,file=sys.stderr)
+        print("Getting some problem")
     finally:
         loop.close()
 

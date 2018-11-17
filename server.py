@@ -9,7 +9,7 @@ async def handle_connection(reader, writer):
     print(f"New client {client_addr}")
 
     while True:
-        data = await reader.read(100)
+        data = await reader.read(4048)
         for other_writer in all_clients:
             other_writer.write(data)
             await other_writer.drain()
@@ -26,7 +26,7 @@ server = loop.run_until_complete(coro)
 try:
     loop.run_forever()
 except KeyboardInterrupt:
-    print('\nGot keyboard interrupt, shutting down',file=sys.stderr)
+    print('\nGot keyboard interrupt, shutting down')
 
 for task in asyncio.Task.all_tasks():
     task.cancel()
