@@ -8,9 +8,9 @@
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: 1fr 1fr 1fr;
-  background: #0288D1;
+  background: #007bff;
   color: #fff;
-  font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+  font-family: 'Roboto', sans-serif;
 }
 .top_container {
     display: grid;
@@ -168,6 +168,7 @@ button {
   position: fixed; /* Set the navbar to fixed position */
   top: 0; /* Position the navbar at the top of the page */
   width: 100%; /* Full width */
+  font-family: 'Roboto', sans-serif;
 }
 
 /* Links inside the navbar */
@@ -181,5 +182,9 @@ button {
 }
 
 .title {
+  justify-self: center;
+}
+
+.intro {
   justify-self: center;
 }
