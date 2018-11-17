@@ -3,12 +3,23 @@
     grid-template-rows: 1.5fr 1fr 1fr;
     margin-top: 30px;
 }
+.dotted {
+  background-image: -webkit-repeating-radial-gradient(center center, rgba(0,0,0,.2), rgba(0,0,0,.2) 1px, transparent 1px, transparent 100%);
+  background-image: -moz-repeating-radial-gradient(center center, rgba(0,0,0,.2), rgba(0,0,0,.2) 1px, transparent 1px, transparent 100%);
+  background-image: -ms-repeating-radial-gradient(center center, rgba(0,0,0,.2), rgba(0,0,0,.2) 1px, transparent 1px, transparent 100%);
+  background-image: repeating-radial-gradient(center center, rgba(0,0,0,.2), rgba(0,0,0,.2) 1px, transparent 1px, transparent 100%);
+  -webkit-background-size: 3px 3px;
+  -moz-background-size: 3px 3px;
+  background-size: 3px 3px;
+  }
+
 
 .banner_container {
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: 1fr 1fr 1fr;
   background: #007bff;
+  background-image: linear-gradient(#007bff, #33AEFF);
   color: #fff;
   font-family: 'Roboto', sans-serif;
 }
@@ -42,6 +53,7 @@ html, body {
     margin:1vmin;
     overflow:hidden;
     position:relative;
+    
   }
   
   .text {
@@ -188,3 +200,4 @@ button {
 .intro {
   justify-self: center;
 }
+
