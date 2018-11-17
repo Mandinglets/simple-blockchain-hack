@@ -80,19 +80,24 @@ class BlockChainClient:
 
     async def send_transations(self, address, value):
         # Check Address
-        if self.check_address(address):
-            message = {
-                "sender_address": self.address,
-                "public_key": self.public_key,
-                "receiver_address": address,
-                "value": value
-            }
+        if address == self.address:
+            print("That is your address")
+        elif self.check_address(address):
+            if not self.chain.get_money().get(self.address, 0) >= value:
+                print("Not enough Fund LOL")
+            else:
+                message = {
+                    "sender_address": self.address,
+                    "public_key": self.public_key,
+                    "receiver_address": address,
+                    "value": value
+                }
 
-            sig = self._private_key.sign(pickle.dumps(message), self.SIGNATURE_ALGORITHM)
-            send_object = MoneyTransation(message, sig)
+                sig = self._private_key.sign(pickle.dumps(message), self.SIGNATURE_ALGORITHM)
+                send_object = MoneyTransation(message, sig)
 
-            # Sending message
-            await self.send_object_server(send_object)
+                # Sending message
+                await self.send_object_server(send_object)
         else:
             print("Address not correct")
 
@@ -104,13 +109,14 @@ class BlockChainClient:
             address = data[1]
             value = float(data[2])
 
-            warnings.warn("Checking Money left isn't")
             await self.send_transations(address, value)
 
         elif data[0] == "show_chain":
             asyncio.ensure_future(self.print_chain())
         elif data[0] == "show_mempool":
             print(self.mempool)
+        elif data[0] == "show_money":
+            print(self.chain.get_money())
         else:
             print("Command not Found")
 
@@ -135,14 +141,16 @@ class BlockChainClient:
             else:
                 self.mempool.append(data)
                 self.mempool.append(MoneyTransation.create_reward(self.address, self.reward))
-                block = Block(self.chain.data['count'],
-                              time.time(),
-                              self.chain.data['content'][-1].header.self_hash(),
-                              self.mempool)
 
-                self.mempool = []
-                self.is_mining = True
-                self.mine_task = asyncio.ensure_future(self.mine(block))
+                if self.check_multiple_transactions(self.mempool):
+                    block = Block(self.chain.data['count'],
+                                  time.time(),
+                                  self.chain.data['content'][-1].header.self_hash(),
+                                  self.mempool)
+
+                    self.mempool = []
+                    self.is_mining = True
+                    self.mine_task = asyncio.ensure_future(self.mine(block))
 
         elif isinstance(data, str):
             if data == "FIRST_USER":
@@ -168,6 +176,8 @@ class BlockChainClient:
 
                 self.mine_task.cancel()
                 self.is_mining = False
+            else:
+                print("Can't Add sth wrong")
 
         elif isinstance(data, BlockChain):
             if self.chain.data['count'] == 0:
@@ -194,7 +204,7 @@ class BlockChainClient:
         await self.send_object_server(block)
 
     def current_difficulty(self):
-        return 5
+        return 4
 
     def check_address(self, address):
         # Just a wrapper
@@ -214,7 +224,8 @@ class BlockChainClient:
             return False
 
         # Check transaction money
-        warnings.warn("Not implemented transaction money")
+        if not self.check_multiple_transactions(block.transaction_list):
+            return False
 
         return True
 
@@ -240,8 +251,21 @@ class BlockChainClient:
 
         return True
 
-    def check_single_transaction(self):
-        pass
+    def check_multiple_transactions(self, transaction_list):
+        # Checking for weird funds
+        total_money = self.chain.get_money()
+        change = self.chain.total_transaction_list(transaction_list)
+
+        # Might be a problem of dropping everyting when one fail :(
+        if any(total_money.get(addr, 0) + val < 0 for addr, val in change.items()):
+            print("LIST TRANSACTION: run out of funds")
+            return False
+
+        if not all(self.check_signature(t.message, t.signature) for t in transaction_list):
+            print("LIST TRANSACTION: wrong signature")
+            return False
+
+        return True
 
     async def start_connection(self, server, client):
         await asyncio.gather(self.get_data_server(server, client), self.send_to_server(server))
@@ -253,6 +277,9 @@ class BlockChainClient:
 
     def check_signature(self, message, signature):
         byte_message = pickle.dumps(message)
+
+        if message['sender_address'] == "system":
+            return True
 
         try:
             pub.verify(signature, byte_message, self.UNIVERSAL_SIG_ALGO)

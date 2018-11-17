@@ -26,4 +26,20 @@ class BlockChain:
                 else:
                     money[t.receiver_address] = t.value
 
-        return money 
+        return money
+
+    def total_transaction_list(self, t_list):
+        change = {}
+        for t in t_list:
+            # Must be in the list
+            if not t.sender_address == "system":
+                if t.sender_address in change:
+                    change[t.sender_address] -= t.value
+                else:
+                    change[t.sender_address] = -t.value
+
+            if t.receiver_address in change:
+                change[t.receiver_address] += t.value
+            else:
+                change[t.receiver_address] = t.value
+        return change
