@@ -10,9 +10,12 @@ from cryptography.hazmat.primitives import hashes
 import hashlib
 import codecs
 import base58
-
 import pickle
+import warnings
+
 from helper import StupidPublicKey
+from transactions import MoneyTransation
+
 
 class ClosingException(Exception):
     pass
@@ -42,6 +45,85 @@ class BlockChainClient:
                                             self.public_key_obj.public_numbers().y)
 
         self.address = self.generate_address()
+
+    async def send_to_server(self, server):
+        while True:
+            msg = await ainput('')
+            if msg == None or msg == '':
+                continue
+
+            await self.parse_input(msg)
+
+    async def get_data_server(self, server, client):
+        while True:
+            data = await client.read(4048)
+            if server.transport.is_closing():
+                print("Closing")
+
+            if len(data) == 0:
+                raise ServerClosingException()
+
+            await self.parse_server_message(data)
+
+    async def send_object_server(self, obj):
+        self.server.write(pickle.dumps(obj))
+        await self.server.drain()
+
+    async def send_transations(self, address, value):
+        # Check Address
+        if self.validate_address(address):
+            message = {
+                "sender_address": self.address,
+                "public_key": self.public_key,
+                "receiver_address": address,
+                "value": value
+            }
+
+            sig = self._private_key.sign(pickle.dumps(message), self.SIGNATURE_ALGORITHM)
+            send_object = MoneyTransation(message, sig)
+
+            # Sending message
+            await self.send_object_server(send_object)
+        else:
+            print("Address not correct")
+
+
+    async def parse_input(self, command):
+        data = command.split(' ')
+        if data[0] == "pay":
+            assert len(data) == 3
+
+            address = data[1]
+            value = float(data[2])
+
+            warnings.warn("Checking Money left isn't")
+            await self.send_transations(address, value)
+
+        else:
+            print("Command not Found")
+
+    async def parse_server_message(self, data):
+        data = pickle.loads(data)
+
+        if isinstance(data, MoneyTransation):
+            print("Print Received Transaction")
+
+    def validate_address(self, address):
+        # Just a wrapper
+        try:
+            base58.b58decode_check(address)
+        except ValueError:
+            return False
+        else:
+            return True
+
+    async def start_connection(self, server, client):
+        await asyncio.gather(self.get_data_server(server, client), self.send_to_server(server))
+
+    async def open_connection(self, loop):
+        client, server = await asyncio.open_connection('127.0.0.1',
+                                                         8888,loop=loop)
+        return client, server
 
     def check_signature(self, message, signature):
         byte_message = pickle.dumps(message)
@@ -74,38 +156,11 @@ class BlockChainClient:
         final_address = base58.b58encode(codecs.decode(bit_25_address, 'hex'))
         return final_address.decode()
 
-    async def send_to_server(self, server):
-        while True:
-            msg = await ainput('')
-            if msg == None or msg == '':
-                continue
-            server.write(msg.encode())
-            await server.drain()
-
-    async def get_data_server(self, server, client):
-        while True:
-            data = await client.read(4048)
-            if server.transport.is_closing():
-                print("Closing")
-
-            if len(data) == 0:
-                raise ServerClosingException()
-
-            print(f"Get the message {data.decode()}")
-
-    async def start_connection(self, server, client):
-        await asyncio.gather(self.get_data_server(server, client), self.send_to_server(server))
-
-    async def open_connection(self, loop):
-        client, server = await asyncio.open_connection('127.0.0.1',
-                                                         8888,loop=loop)
-        return client, server
-
     def run(self):
         try:
             self.loop = asyncio.get_event_loop()
-            client, server = self.loop.run_until_complete(self.open_connection(self.loop))
-            self.loop.run_until_complete(self.start_connection(server, client))
+            self.client, self.server = self.loop.run_until_complete(self.open_connection(self.loop))
+            self.loop.run_until_complete(self.start_connection(self.server, self.client))
         except ServerClosingException as e:
             print("Server just closed")
         finally:
@@ -122,8 +177,6 @@ if __name__ == '__main__':
     SIGNATURE_ALGORITHM = ec.ECDSA(hashes.SHA256())
     START_REWARD = 50
     DECREASE_REWARD = 10
-
-
 
     client = BlockChainClient(args.port, CURVE, SIGNATURE_ALGORITHM, START_REWARD, DECREASE_REWARD)
     print(f"Running on Address: {client.address}")

@@ -12,8 +12,8 @@ async def handle_connection(reader, writer):
         data = await reader.read(4048)
         if data is None or len(data) == 0:
             break
-            
-        print(f"Get data {data.decode()}")
+
+        print(f"Get data {type(data)}")
 
         for other_writer in all_clients:
             other_writer.write(data)

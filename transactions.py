@@ -5,7 +5,7 @@ class Transaction:
 
 class MoneyTransation(Transaction):
     def __init__(self, message, signature):
-        super(self).__init__(message, signature)
+        super().__init__(message, signature)
 
         self.sender = message['sender_address']
         self.public_key = message['public_key']
