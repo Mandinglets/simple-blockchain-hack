@@ -1,0 +1,5 @@
+aioconsole
+asyncio
+cryptography
+codecs
+base58

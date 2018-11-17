@@ -281,11 +281,17 @@ class BlockChainClient:
         if message['sender_address'] == "system":
             return True
 
+        pub = ec.EllipticCurvePublicNumbers(
+                message['public_key'].x,
+                message['public_key'].y,
+                self.CURVE
+            ).public_key(default_backend())
+
         try:
-            pub.verify(signature, byte_message, self.UNIVERSAL_SIG_ALGO)
+            pub.verify(signature, byte_message, self.SIGNATURE_ALGORITHM)
         except cryptography.exceptions.InvalidSignature:
             return False
-        finally:
+        else:
             return True
 
     def generate_address(self):
