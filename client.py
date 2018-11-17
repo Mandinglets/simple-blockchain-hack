@@ -21,19 +21,18 @@ from block_chain import BlockChain
 import time
 import random
 
+from aiohttp import web
+import aiohttp_jinja2
+import jinja2
+
 class ClosingException(Exception):
     pass
 
 class ServerClosingException(Exception):
     pass
 
-class BlockChainClient:
-    def __init__(self,
-                    port,
-                    crypto_curve,
-                    signature_algo,
-                    start_reward,
-                    decrease_reward):
+class BlockChainClient:    
+    def __init__(self, port, crypto_curve, signature_algo,start_reward, decrease_reward):
 
         self.PORT = port
         self.CURVE = crypto_curve
