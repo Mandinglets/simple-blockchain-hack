@@ -13,8 +13,13 @@ async def handle_connection(reader, writer):
         message = "FIRST_USER"
         writer.write(pickle.dumps(message))
         await writer.drain()
-    all_clients.add(writer)
+    else:
+        # Not always tho because set isn't ordered element.
+        oldest_user = list(all_clients)[0]
+        oldest_user.write(pickle.dumps("REQUEST_BLOCKCHAIN"))
+        await oldest_user.drain()
 
+    all_clients.add(writer)
 
     while True:
         data = await reader.read(4048)

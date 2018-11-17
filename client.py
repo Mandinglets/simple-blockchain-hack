@@ -19,6 +19,7 @@ from block import Block
 from block_chain import BlockChain
 
 import time
+import random
 
 class ClosingException(Exception):
     pass
@@ -49,8 +50,10 @@ class BlockChainClient:
 
         self.address = self.generate_address()
         self.chain = BlockChain()
+        self.mempool = []
+
         self.is_mining = False
-        self.fucking_delay = 0.0
+        self.fucking_delay = 0
 
     async def send_to_server(self, server):
         while True:
@@ -104,8 +107,19 @@ class BlockChainClient:
             warnings.warn("Checking Money left isn't")
             await self.send_transations(address, value)
 
+        elif data[0] == "show_chain":
+            asyncio.ensure_future(self.print_chain())
+        elif data[0] == "show_mempool":
+            print(self.mempool)
         else:
             print("Command not Found")
+
+    async def print_chain(self):
+        print(f"Count: {self.chain.data['count']}")
+        for c in self.chain.data['content']:
+            print('\n\n')
+            print(c)
+            await asyncio.sleep(0.0)
 
     async def parse_server_message(self, data):
         data = pickle.loads(data)
@@ -115,6 +129,20 @@ class BlockChainClient:
             if not self.check_signature(data.message, data.signature):
                 print("Transaction Not accepted")
                 return
+
+            if self.is_mining:
+                self.mempool.append(data)
+            else:
+                self.mempool.append(data)
+                self.mempool.append(MoneyTransation.create_reward(self.address, self.reward))
+                block = Block(self.chain.data['count'],
+                              time.time(),
+                              self.chain.data['content'][-1].header.self_hash(),
+                              self.mempool)
+
+                self.mempool = []
+                self.is_mining = True
+                self.mine_task = asyncio.ensure_future(self.mine(block))
 
         elif isinstance(data, str):
             if data == "FIRST_USER":
@@ -128,6 +156,10 @@ class BlockChainClient:
                 self.is_mining = True
                 self.mine_task = asyncio.ensure_future(self.mine(genesis_block))
 
+            if data == "REQUEST_BLOCKCHAIN":
+                print("Requestion a blockchain")
+                await self.send_object_server(self.chain)
+
         elif isinstance(data, Block):
             print("Get a block")
             if self.check_block(data):
@@ -136,6 +168,11 @@ class BlockChainClient:
 
                 self.mine_task.cancel()
                 self.is_mining = False
+
+        elif isinstance(data, BlockChain):
+            if self.chain.data['count'] == 0:
+                self.chain = data
+                print("Chain Added")
         else:
             print("Getting Weird Object")
             print(data)
@@ -157,7 +194,7 @@ class BlockChainClient:
         await self.send_object_server(block)
 
     def current_difficulty(self):
-        return 4
+        return 5
 
     def check_address(self, address):
         # Just a wrapper
@@ -192,7 +229,7 @@ class BlockChainClient:
                 print("HEADER: wrong time stamp")
                 return False
 
-            if not latest_head.self_hash() == latest_head.prev_hash:
+            if not latest_head.self_hash() == header.prev_hash:
                 print("HEADER: wrong previous hash")
                 return False
 

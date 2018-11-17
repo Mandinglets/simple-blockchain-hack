@@ -8,3 +8,22 @@ class BlockChain:
     def add_data(self, block):
         self.data['content'].append(block)
         self.data['count'] += 1
+
+    def __str__(self):
+        all_contents = '\n\n'.join([str(c) for c in self.data['content']])
+        return f"Count: {self.data['count']} \n \n {all_contents}"
+
+    def get_money(self):
+        money = {}
+        for c in self.data['content']:
+            for t in c.transaction_list:
+                # Must be in the list
+                if not t.sender_address == "system":
+                    money[t.sender_address] -= t.value
+
+                if t.receiver_address in money:
+                    money[t.receiver_address] += t.value
+                else:
+                    money[t.receiver_address] = t.value
+
+        return money 
