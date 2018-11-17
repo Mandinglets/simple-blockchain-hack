@@ -1,5 +1,5 @@
 # For Server Class -- Using the code from DAPs Class.
-import sys, asyncio
+import asyncio
 
 all_clients = set([])
 
@@ -10,6 +10,8 @@ async def handle_connection(reader, writer):
 
     while True:
         data = await reader.read(4048)
+        print(f"Get data {data.decode()}")
+        
         for other_writer in all_clients:
             other_writer.write(data)
             await other_writer.drain()
