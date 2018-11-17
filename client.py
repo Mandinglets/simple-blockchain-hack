@@ -11,6 +11,8 @@ import hashlib
 import codecs
 import base58
 
+import pickle
+from helper import StupidPublicKey
 
 class ClosingException(Exception):
     pass
@@ -35,12 +37,25 @@ class BlockChainClient:
 
         # Start generating private & public key
         self._private_key = ec.generate_private_key(self.CURVE, default_backend())
-        self.public_key = self._private_key.public_key()
+        self.public_key_obj = self._private_key.public_key()
+        self.public_key = StupidPublicKey(self.public_key_obj.public_numbers().x,
+                                            self.public_key_obj.public_numbers().y)
+
         self.address = self.generate_address()
+
+    def check_signature(self, message, signature):
+        byte_message = pickle.dumps(message)
+
+        try:
+            pub.verify(signature, byte_message, self.UNIVERSAL_SIG_ALGO)
+        except cryptography.exceptions.InvalidSignature:
+            return False
+        finally:
+            return True
 
     def generate_address(self):
         # Using the hash stuff from bitcoin wiki
-        actual_key = '02' + format(self.public_key.public_numbers().x, '064x')
+        actual_key = '02' + format(self.public_key.x, '064x')
 
         sh = hashlib.sha256()
         rip = hashlib.new('ripemd160')
@@ -107,6 +122,8 @@ if __name__ == '__main__':
     SIGNATURE_ALGORITHM = ec.ECDSA(hashes.SHA256())
     START_REWARD = 50
     DECREASE_REWARD = 10
+
+
 
     client = BlockChainClient(args.port, CURVE, SIGNATURE_ALGORITHM, START_REWARD, DECREASE_REWARD)
     print(f"Running on Address: {client.address}")
