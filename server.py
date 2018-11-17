@@ -10,8 +10,11 @@ async def handle_connection(reader, writer):
 
     while True:
         data = await reader.read(4048)
+        if data is None or len(data) == 0:
+            break
+            
         print(f"Get data {data.decode()}")
-        
+
         for other_writer in all_clients:
             other_writer.write(data)
             await other_writer.drain()
