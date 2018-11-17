@@ -2,22 +2,47 @@
 <html>
     <head>
         <title>Porticode Hero Blockchain Hack</title>
-        <link rel="stylesheet" href="style.css"
+        <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Bubblegum+Sans">
+        <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+        <script src="scripts.js"></script>
+
+        
 
     </head>
-    <body class="container">
-        <h2>Current Money: </h2>
-        <button type="button">See Chain</button>
-        <form class="address_entry">
-            Address:<br>
-            <input type="text" name="address"><br>
-        </form>
-        <form class="value_entry">
-            Value:<br>
-            <input type="text" name="value">    
-        <button type="button">Send</button>
-        </form>
-        
+    <body class="comic">
+        <div class="navbar">
+            <a href="#home">Home</a>
+            <a href="#send_phu">Send KHENG</a>
+            <a href="#contact">Contact</a>
+        </div>
+        <div class="main_container dotted">
+            <div id="home" class="banner_container">
+                <h1></h1>
+                <h1 class="title">Welcome to NATCoin</h1>
+                <h3 class="intro">A blockchain-based trading card game</h3>
+
+            </div>
+            <div id="send_phu" class="top_container">
+                <div class="panel">
+                    <p class="text top-left">Current Money</p>
+                    <p class="text bottom-right">1500 KHENG</p>
+                </div>
+                <button type="button" class="panel">See Chain</button>
+            </div>
+            <div class="bottom_container">
+                <form class="address_entry panel">
+                    <p class="text top-left">Address</p>
+                    <input class="bottom-right" type="text" name="address"><br>
+                </form>
+                    <form class="value_entry panel">
+                    <p class="text top-left">Value</p>
+                    <input class="bottom-right"type="text" name="value">    
+                </form>
+                <button onclick="window.location.href='#home'" class="panel" type="button">Send</button>
+            </div>
+        </div>
+
 
     </body>
 </html>

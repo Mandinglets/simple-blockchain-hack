@@ -1,28 +1,8 @@
 .main_container {
     display: grid;
-    grid-template-rows: 1.5fr 1fr 1fr;
-    margin-top: 30px;
+    grid-template-rows: 1fr 1fr;
 }
-.dotted {
-  background-image: -webkit-repeating-radial-gradient(center center, rgba(0,0,0,.2), rgba(0,0,0,.2) 1px, transparent 1px, transparent 100%);
-  background-image: -moz-repeating-radial-gradient(center center, rgba(0,0,0,.2), rgba(0,0,0,.2) 1px, transparent 1px, transparent 100%);
-  background-image: -ms-repeating-radial-gradient(center center, rgba(0,0,0,.2), rgba(0,0,0,.2) 1px, transparent 1px, transparent 100%);
-  background-image: repeating-radial-gradient(center center, rgba(0,0,0,.2), rgba(0,0,0,.2) 1px, transparent 1px, transparent 100%);
-  -webkit-background-size: 3px 3px;
-  -moz-background-size: 3px 3px;
-  background-size: 3px 3px;
-  }
 
-
-.banner_container {
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: 1fr 1fr 1fr;
-  background: #007bff;
-  background-image: linear-gradient(#007bff, #33AEFF);
-  color: #fff;
-  font-family: 'Roboto', sans-serif;
-}
 .top_container {
     display: grid;
     grid-template-columns: 2fr 1fr;
@@ -53,7 +33,6 @@ html, body {
     margin:1vmin;
     overflow:hidden;
     position:relative;
-    
   }
   
   .text {
@@ -171,33 +150,5 @@ input {
 
 button {
     font-family: 'Comic Sans', cursive;
-}
-
-/* The navigation bar */
-.navbar {
-  overflow: hidden;
-  background-color: #333;
-  position: fixed; /* Set the navbar to fixed position */
-  top: 0; /* Position the navbar at the top of the page */
-  width: 100%; /* Full width */
-  font-family: 'Roboto', sans-serif;
-}
-
-/* Links inside the navbar */
-.navbar a {
-  float: left;
-  display: block;
-  color: #f2f2f2;
-  text-align: center;
-  padding: 14px 16px;
-  text-decoration: none;
-}
-
-.title {
-  justify-self: center;
-}
-
-.intro {
-  justify-self: center;
 }
 
