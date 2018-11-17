@@ -15,7 +15,10 @@ import warnings
 
 from helper import StupidPublicKey
 from transactions import MoneyTransation
+from block import Block
+from block_chain import BlockChain
 
+import time
 
 class ClosingException(Exception):
     pass
@@ -45,6 +48,9 @@ class BlockChainClient:
                                             self.public_key_obj.public_numbers().y)
 
         self.address = self.generate_address()
+        self.chain = BlockChain()
+        self.is_mining = False
+        self.fucking_delay = 0.0
 
     async def send_to_server(self, server):
         while True:
@@ -71,7 +77,7 @@ class BlockChainClient:
 
     async def send_transations(self, address, value):
         # Check Address
-        if self.validate_address(address):
+        if self.check_address(address):
             message = {
                 "sender_address": self.address,
                 "public_key": self.public_key,
@@ -86,7 +92,6 @@ class BlockChainClient:
             await self.send_object_server(send_object)
         else:
             print("Address not correct")
-
 
     async def parse_input(self, command):
         data = command.split(' ')
@@ -106,9 +111,55 @@ class BlockChainClient:
         data = pickle.loads(data)
 
         if isinstance(data, MoneyTransation):
-            print("Print Received Transaction")
+            # Start creating your own block
+            if not self.check_signature(data.message, data.signature):
+                print("Transaction Not accepted")
+                return
 
-    def validate_address(self, address):
+        elif isinstance(data, str):
+            if data == "FIRST_USER":
+                print("God has chosen you to mine the genesis block")
+                genesis_block = Block(0,
+                                      time.time(),
+                                      "0000000000000000000000000000000000000000000000000000000000000000",
+                                      [MoneyTransation.create_reward(self.address, self.reward)])
+
+                # Mine the block
+                self.is_mining = True
+                self.mine_task = asyncio.ensure_future(self.mine(genesis_block))
+
+        elif isinstance(data, Block):
+            print("Get a block")
+            if self.check_block(data):
+                print("Add to the chain")
+                self.chain.add_data(data)
+
+                self.mine_task.cancel()
+                self.is_mining = False
+        else:
+            print("Getting Weird Object")
+            print(data)
+
+    async def mine(self, block):
+        header = block.header
+        num_zero = self.current_difficulty()
+        warnings.warn("Haven't implementaed difficulty")
+
+        block_hash = header.self_hash()
+        while not block_hash[:num_zero] == '0' * num_zero:
+            header.nouce += 1
+            block_hash = header.self_hash()
+            await asyncio.sleep(self.fucking_delay)
+
+        block.header = header
+        self.is_mining = False
+
+        await self.send_object_server(block)
+
+    def current_difficulty(self):
+        return 4
+
+    def check_address(self, address):
         # Just a wrapper
         try:
             base58.b58decode_check(address)
@@ -116,6 +167,44 @@ class BlockChainClient:
             return False
         else:
             return True
+
+    def check_block(self, block):
+        if not self.check_header(block.header):
+            return False
+
+        if not block.header.transaction_hash == block.transaction_list_hash():
+            print("BLOCK: transaction hash are not the same.")
+            return False
+
+        # Check transaction money
+        warnings.warn("Not implemented transaction money")
+
+        return True
+
+    def check_header(self, header):
+        if not header.index == self.chain.data['count']:
+            print("HEADER: header index not currect")
+            return False
+
+        if not self.chain.data['count'] == 0:
+            latest_head = self.chain.data['content'][-1].header
+            if not latest_head.timestamp < header.timestamp:
+                print("HEADER: wrong time stamp")
+                return False
+
+            if not latest_head.self_hash() == latest_head.prev_hash:
+                print("HEADER: wrong previous hash")
+                return False
+
+        # Check for PoW
+        if not header.self_hash()[:self.current_difficulty()] == '0' * self.current_difficulty():
+            print("HEADER: wrong proof of work")
+            return False
+
+        return True
+
+    def check_single_transaction(self):
+        pass
 
     async def start_connection(self, server, client):
         await asyncio.gather(self.get_data_server(server, client), self.send_to_server(server))
