@@ -18,6 +18,8 @@ from transactions import MoneyTransation
 from block import Block
 from block_chain import BlockChain
 
+import time
+
 class ClosingException(Exception):
     pass
 
@@ -47,6 +49,8 @@ class BlockChainClient:
 
         self.address = self.generate_address()
         self.chain = BlockChain()
+        self.is_mining = False
+        self.fucking_delay = 0.0
 
     async def send_to_server(self, server):
         while True:
@@ -112,7 +116,47 @@ class BlockChainClient:
                 print("Transaction Not accepted")
                 return
 
+        elif isinstance(data, str):
+            if data == "FIRST_USER":
+                print("God has chosen you to mine the genesis block")
+                genesis_block = Block(0,
+                                      time.time(),
+                                      "0000000000000000000000000000000000000000000000000000000000000000",
+                                      [MoneyTransation.create_reward(self.address, self.reward)])
+                # Mine the block
+                self.is_mining = True
+                self.mine_task = asyncio.ensure_future(self.mine(genesis_block))
+
+        elif isinstance(data, Block):
+            if self.is_mining:
+                self.mine_task.cancel()
+            else:
+                # Check the block
+                print("Get a block")
+        else:
+            print("Getting Weird Object")
+            print(data)
+
             # block = Block()
+
+    async def mine(self, block):
+        header = block.header
+        num_zero = self.current_difficulty()
+        warnings.warn("Haven't implementaed difficulty")
+
+        block_hash = header.self_hash()
+        while not block_hash[:num_zero] == '0' * num_zero:
+            header.nouce += 1
+            block_hash = header.self_hash()
+            await asyncio.sleep(self.fucking_delay)
+
+        block.header = header
+        self.is_mining = False
+        await self.send_object_server(block)
+
+
+    def current_difficulty(self):
+        return 4
 
     def validate_address(self, address):
         # Just a wrapper

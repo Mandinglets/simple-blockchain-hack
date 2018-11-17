@@ -1,12 +1,20 @@
 # For Server Class -- Using the code from DAPs Class.
 import asyncio
+import pickle
 
 all_clients = set([])
 
 async def handle_connection(reader, writer):
-    all_clients.add(writer)
     client_addr = writer.get_extra_info('peername')
     print(f"New client {client_addr}")
+
+    if len(all_clients) == 0:
+        # First Player Holy Shit
+        message = "FIRST_USER"
+        writer.write(pickle.dumps(message))
+        await writer.drain()
+    all_clients.add(writer)
+
 
     while True:
         data = await reader.read(4048)
