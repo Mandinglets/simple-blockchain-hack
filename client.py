@@ -15,7 +15,8 @@ import warnings
 
 from helper import StupidPublicKey
 from transactions import MoneyTransation
-
+from block import Block
+from block_chain import BlockChain
 
 class ClosingException(Exception):
     pass
@@ -45,6 +46,7 @@ class BlockChainClient:
                                             self.public_key_obj.public_numbers().y)
 
         self.address = self.generate_address()
+        self.chain = BlockChain()
 
     async def send_to_server(self, server):
         while True:
@@ -87,7 +89,6 @@ class BlockChainClient:
         else:
             print("Address not correct")
 
-
     async def parse_input(self, command):
         data = command.split(' ')
         if data[0] == "pay":
@@ -106,7 +107,12 @@ class BlockChainClient:
         data = pickle.loads(data)
 
         if isinstance(data, MoneyTransation):
-            print("Print Received Transaction")
+            # Start creating your own block
+            if not self.check_signature(data.message, data.signature):
+                print("Transaction Not accepted")
+                return
+
+            # block = Block()
 
     def validate_address(self, address):
         # Just a wrapper
