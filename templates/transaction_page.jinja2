@@ -114,36 +114,38 @@
         </div>
 
         <div class="row" align="center">
-
-          <div class="col-lg-4 mx-auto" >
-              <div class="form-group">
-                  <label for="exampleFormControlSelect1">Select Legend</label>
-                  <select class="form-control" id="exampleFormControlSelect1">
-                    {% for n in img_name %}
-                    <option>{{n}}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-
-          </div>
-          <div class="col-lg-1 mx-auto">
-            <div class="container-fluid">
-              <p><br><br>to</p>
-            </div>
-          </div>
-          <div class="col-lg-5 mx-auto">
-            <div class="container-fluid">
+          <form id="send-object" method="post" class="col-lg-4 mx-auto">
+            <div class="col-lg-4 mx-auto" >
                 <div class="form-group">
-                    <label for="exampleFormControlInput1">Address</label>
-                    <input type="email" class="form-control" id="exampleFormControlInput1" placeholder="">
+                    <label for="exampleFormControlSelect1">Select Legend</label>
+                    <select class="form-control" id="exampleFormControlSelect1">
+                      {% for n in img_name %}
+                      <option>{{n}}</option>
+                      {% endfor %}
+                    </select>
                   </div>
+
             </div>
-          </div>
-          <div class="col-lg-2 mx-auto">
-            <div class="container-fluid"><br>
-              <button class="btn">Send!</button>
+            <div class="col-lg-1 mx-auto">
+              <div class="container-fluid">
+                <p><br><br>to</p>
+              </div>
             </div>
-          </div>
+            <div class="col-lg-5 mx-auto">
+              <div class="container-fluid">
+                  <div class="form-group">
+                      <label for="exampleFormControlInput1">Address</label>
+                      <input class="form-control" id="address-img" placeholder="">
+                    </div>
+              </div>
+            </div>
+            <div class="col-lg-2 mx-auto">
+              <div class="container-fluid"><br>
+                <input name="submit" type="submit" value="submit" class = "btn"/>
+              </div>
+            </div>
+          </form>
+
 
         </div>
 
@@ -226,6 +228,36 @@
                 });
             });
         })
+
+        $(document).ready(function(){
+            $('#send-object').on('submit', function(e){
+                var dropdown = $('#exampleFormControlSelect1').val();
+                var address_img = $('#address-img').val();
+
+                e.preventDefault();
+                if (address_img ==''){
+                    alert("Fill out all values, plz");
+                }else{
+                  $.ajax({
+                      url: "/send_obj",
+                      data: {'hash_val': dropdown, 'address': address_img},
+                      method: 'POST',
+                      success: function(data) {
+                          if(data != ''){
+                              alert(data);
+                          }else{
+                              alert("Done, Now wait for the chain to update");
+                              // Use this fornow
+                              window.location.reload();
+                          }
+                      }
+                  });
+                }
+
+            });
+        })
+
+
 
 
     </script>

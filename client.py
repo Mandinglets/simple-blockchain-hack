@@ -20,7 +20,7 @@ import warnings
 import numpy as np
 
 from helper import StupidPublicKey
-from transactions import MoneyTransation, CreateObject, GetDataObject, ResponseDataObject
+from transactions import MoneyTransation, CreateObject, GetDataObject, ResponseDataObject, SendObject
 from block import Block
 from block_chain import BlockChain
 
@@ -98,6 +98,26 @@ class BlockChainClient:
     async def send_object_server(self, obj):
         self.server.write(pickle.dumps(obj))
         await self.server.drain()
+
+    async def send_data_img(self, address, hash_object):
+        if address == self.address:
+            return "That is your address"
+        elif self.check_address(address):
+            if not hash_object in self.chain.get_owner().get(self.address, []):
+                return "You didn't own it"
+            else:
+                message = {
+                    "sender_address": self.address,
+                    "public_key": self.public_key,
+                    "receiver_address": address,
+                    "hash_object": hash_object
+                }
+                sig = self._private_key.sign(pickle.dumps(message), self.SIGNATURE_ALGORITHM)
+                send_object = SendObject(message, sig)
+
+                await self.send_object_server(send_object)
+        else:
+            return "Address isn't correct"
 
     async def send_transations(self, address, value):
         # Check Address
@@ -287,7 +307,7 @@ class BlockChainClient:
                     await self.send_object_server(response)
         elif isinstance(data, ResponseDataObject):
             if data.send_to_address == self.address:
-                if hashlib.sha256(pickle.dumps(data.data.tostring())).hexdigest() in self.chain.get_owner()[self.address]:
+                if self.numpy_content_to_hash(data.data) in self.chain.get_owner()[self.address]:
                     print("Get Data!!")
                     self.own_data.append(data.data)
                 else:
@@ -295,6 +315,9 @@ class BlockChainClient:
         else:
             print("Getting Weird Object")
             print(data)
+
+    def numpy_content_to_hash(self, numpy_array):
+        return hashlib.sha256(pickle.dumps(numpy_array.tostring())).hexdigest()
 
     async def mine(self, block):
         header = block.header
@@ -448,16 +471,16 @@ class BlockChainClient:
 
             async with session.post(self.API_ADDR, data=np_array.tostring(), headers=headers) as resp:
                 print(resp.status)
-                import sys
                 bytes = await resp.content.read(20000)
-                print(sys.getsizeof(bytes))
-                save_path = os.path.join(self.IMG_PATH, f"{hashlib.sha256(bytes).hexdigest()}.png")
+
+                # Hash the image content.
+                save_path = os.path.join(self.IMG_PATH, f"{self.numpy_content_to_hash(np_array)}.png")
 
                 f = open(save_path, 'wb')
                 f.write(bytearray(bytes))
                 f.close()
 
-                return f"{hashlib.sha256(bytes).hexdigest()}.png"
+                return f"{self.numpy_content_to_hash(np_array)}.png"
 
     async def fetch_all_imgs(self):
         all_path = []
@@ -471,14 +494,12 @@ class BlockChainClient:
     async def main_page(self, request):
         # Everytime main page is updated.
         # Delete everyting in folder
-        print("runnnnn")
         asyncio.ensure_future(self.delete_files())
         # download a new one that will return the path
         file_paths = await self.fetch_all_imgs()
-        print(file_paths)
 
-        names = [f[:8]for f in file_paths]
-        print(names)
+        short_names = [f[:8]for f in file_paths]
+        self.long_names = [f[:-4] for f in file_paths]
 
         return {
             'address': self.address,
@@ -491,7 +512,7 @@ class BlockChainClient:
             'self_address': self.address,
             'current_money': self.chain.get_money().get(self.address, 0.0),
             'img_paths': file_paths,
-            'img_name': names
+            'img_name': short_names
         }
 
     async def create_obj_web(self, request):
@@ -508,6 +529,25 @@ class BlockChainClient:
         result = await self.send_transations(address, value)
         return web.Response(text=result)
 
+    async def send_obj_web(self, request):
+        data = await request.post()
+
+        address = data['address']
+        hash_val = data['hash_val']
+        index = -1
+
+        for i, n in enumerate(self.long_names):
+            if n[:8] == hash_val:
+                index = i
+                break
+
+        if index == -1:
+            print("ERROR can't find it ")
+        else:
+            result = await self.send_data_img(address, self.long_names[index])
+            return web.Response(text=result)
+
+
     async def init_webserver(self, port):
         app = web.Application()
 
@@ -517,6 +557,7 @@ class BlockChainClient:
             web.get('/', self.main_page),
             web.post('/transact', self.transact_web),
             web.post('/create_obj', self.create_obj_web),
+            web.post('/send_obj', self.send_obj_web)
         ]
         app.add_routes(routes)
 
