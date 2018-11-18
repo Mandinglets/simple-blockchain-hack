@@ -49,7 +49,7 @@ class BlockChainClient:
         self.public_key = StupidPublicKey(self.public_key_obj.public_numbers().x,
                                             self.public_key_obj.public_numbers().y)
 
-        self.address = self.generate_address()
+        self.address = self.generate_address(self.public_key)
         self.chain = BlockChain()
         self.mempool = []
 
@@ -282,6 +282,9 @@ class BlockChainClient:
         if message['sender_address'] == "system":
             return True
 
+        if not message['sender_address'] == self.generate_address(message['public_key']):
+            return False
+
         pub = ec.EllipticCurvePublicNumbers(
                 message['public_key'].x,
                 message['public_key'].y,
@@ -295,9 +298,9 @@ class BlockChainClient:
         else:
             return True
 
-    def generate_address(self):
+    def generate_address(self, public):
         # Using the hash stuff from bitcoin wiki
-        actual_key = '02' + format(self.public_key.x, '064x')
+        actual_key = '02' + format(public.x, '064x')
 
         sh = hashlib.sha256()
         rip = hashlib.new('ripemd160')
@@ -326,7 +329,8 @@ class BlockChainClient:
             'static_path_jqjs': request.app.router['jqjs'].url_for(filename=''),
             'static_path_bsjs': request.app.router['boot_js'].url_for(filename=''),
             'static_path_esjs': request.app.router['esa_js'].url_for(filename=''),
-            'self_address': self.address
+            'self_address': self.address,
+            'current_money': self.chain.get_money().get(self.address, 0.0)
         }
 
     async def transact_web(self, request):
@@ -336,7 +340,6 @@ class BlockChainClient:
         value = float(data['val'])
 
         result = await self.send_transations(address, value)
-
         return web.Response(text=result)
 
     async def init_webserver(self, port):
@@ -383,7 +386,7 @@ if __name__ == '__main__':
     # Getting the configureation
     CURVE = ec.SECP256K1()
     SIGNATURE_ALGORITHM = ec.ECDSA(hashes.SHA256())
-    START_REWARD = 50
+    START_REWARD = 50.0
     DECREASE_REWARD = 10
 
     client = BlockChainClient(args.port, CURVE, SIGNATURE_ALGORITHM, START_REWARD, DECREASE_REWARD)
