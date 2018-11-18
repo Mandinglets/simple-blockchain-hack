@@ -1,4 +1,4 @@
-from transactions import CreateObject
+from transactions import CreateObject, SendObject
 
 class BlockChain:
     def __init__(self):
@@ -21,6 +21,9 @@ class BlockChain:
             for t in c.transaction_list:
                 if isinstance(t, CreateObject):
                     t = t.transaction_to_system
+                elif isinstance(t, SendObject):
+                    continue
+
                 # Must be in the list
                 if not t.sender_address == "system":
                     money[t.sender_address] -= t.value
@@ -41,6 +44,13 @@ class BlockChain:
                         owner[t.sender_address].append(t.data_hash)
                     else:
                         owner[t.sender_address] = [t.data_hash]
+                if isinstance(t, SendObject):
+                    owner[t.sender_address].remove(t.hash_object)
+
+                    if t.receiver_address in owner:
+                        owner[t.receiver_address].append(t.hash_object)
+                    else:
+                        owner[t.receiver_address] = [t.hash_object]
         return owner
 
     def total_transaction_list(self, t_list):
@@ -48,6 +58,9 @@ class BlockChain:
         for t in t_list:
             if isinstance(t, CreateObject):
                 t = t.transaction_to_system
+            elif isinstance(t, SendObject):
+                continue
+
             # Must be in the list
             if not t.sender_address == "system":
                 if t.sender_address in change:

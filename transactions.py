@@ -48,6 +48,12 @@ class GetDataObject(Transaction):
     def self_hash(self):
         pass
 
+    def __str__(self):
+        return f"GetDataObject: Sender Address: {self.sender_address} wanting {self.wanted_hash}"
+
+    def __repr__(self):
+        return str(self)
+
 class ResponseDataObject:
     def __init__(self, data, send_to_address):
         self.data = data
@@ -58,6 +64,12 @@ class ResponseDataObject:
 
     def data_hash(self):
         return hashlib.sha256(pickle.dumps(self.data.tostring())).hexdigest()
+
+    def __str__(self):
+        return f"Response Object: Send to Address: {self.send_to_address}"
+
+    def __repr__(self):
+         return str(self)
 
 class CreateObject(Transaction):
     def __init__(self, message, signature, transaction_to_system):
@@ -88,3 +100,9 @@ class SendObject(Transaction):
 
     def self_hash(self):
         return hashlib.sha256(pickle.dumps(str(self))).hexdigest()
+
+    def __str__(self):
+        return f"Send Hash Object({self.hash_object[:4]}..): from {self.sender_address} -> {self.receiver_address}"
+
+    def __repr__(self):
+        return str(self)

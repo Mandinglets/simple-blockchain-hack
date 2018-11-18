@@ -6,6 +6,7 @@ Run Client with port number
 """
 import asyncio
 from aioconsole import ainput
+import aiofiles
 
 import cryptography
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -227,9 +228,7 @@ class BlockChainClient:
             print(c)
             await asyncio.sleep(0.0)
 
-    async def get_own_data(self):
-        warnings.warn("might block")
-        owned_hash = self.chain.get_owner().get(self.address, [])
+    async def sending_request(self, owned_hash):
         for o in owned_hash:
             message = {
                 "sender_address": self.address,
@@ -237,6 +236,13 @@ class BlockChainClient:
             }
             sig = self._private_key.sign(pickle.dumps(message), self.SIGNATURE_ALGORITHM)
             await self.send_object_server(GetDataObject(message, sig, o))
+
+
+    async def get_own_data(self):
+        warnings.warn("might block")
+        owned_hash = self.chain.get_owner().get(self.address, [])
+        print(f"Own hash is {owned_hash}")
+        asyncio.ensure_future(self.sending_request(owned_hash))
 
     async def parse_server_message(self, data):
         data = pickle.loads(data)
@@ -301,17 +307,33 @@ class BlockChainClient:
                 else:
                     await self.create_block(data)
         elif isinstance(data, GetDataObject):
+            print(data)
             if self.check_signature(data.message, data.signature):
                 if data.wanted_hash in self.img_library:
                     response =  ResponseDataObject(self.img_library[data.wanted_hash], data.sender_address)
                     await self.send_object_server(response)
+            else:
+                print("Check Data Object wrong signature")
         elif isinstance(data, ResponseDataObject):
+            print(data)
             if data.send_to_address == self.address:
                 if self.numpy_content_to_hash(data.data) in self.chain.get_owner()[self.address]:
                     print("Get Data!!")
                     self.own_data.append(data.data)
                 else:
                     print("Hash isn't right")
+        elif isinstance(data, SendObject):
+            if self.check_signature(data.message, data.signature):
+                # check that the sender did have one
+                if not data.hash_object in self.chain.get_owner().get(data.sender_address, []):
+                    print("No own the hash")
+                else:
+                    if self.is_mining:
+                        self.mempool.append(data)
+                    else:
+                        await self.create_block(data)
+            else:
+                print("The signature isn'r right ")
         else:
             print("Getting Weird Object")
             print(data)
@@ -460,9 +482,6 @@ class BlockChainClient:
             os.remove(os.path.join(self.IMG_PATH, f))
             await asyncio.sleep(0.0)
 
-    async def save_image(self, bytes, save_path):
-        await asyncio.sleep(0.0)
-
     async def download_imgs(self, np_array):
         async with aiohttp.ClientSession() as session:
 
@@ -476,26 +495,28 @@ class BlockChainClient:
                 # Hash the image content.
                 save_path = os.path.join(self.IMG_PATH, f"{self.numpy_content_to_hash(np_array)}.png")
 
-                f = open(save_path, 'wb')
-                f.write(bytearray(bytes))
-                f.close()
+                async with aiofiles.open(save_path, mode='wb') as f:
+                    await f.write(bytearray(bytes))
 
                 return f"{self.numpy_content_to_hash(np_array)}.png"
 
     async def fetch_all_imgs(self):
         all_path = []
+
         for a in self.own_data:
             save_path = await self.download_imgs(a)
             all_path.append(save_path)
             await asyncio.sleep(0.0)
+        print(f"Own data {all_path}")
         return all_path
 
     @aiohttp_jinja2.template('transaction_page.jinja2')
     async def main_page(self, request):
         # Everytime main page is updated.
         # Delete everyting in folder
-        asyncio.ensure_future(self.delete_files())
+        # asyncio.ensure_future(self.delete_files())
         # download a new one that will return the path
+        # await self.get_own_data()
         file_paths = await self.fetch_all_imgs()
 
         short_names = [f[:8]for f in file_paths]
