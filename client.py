@@ -1,4 +1,9 @@
 # For Client Class -- Code from DAPs only
+"""
+Run API
+Run server
+Run Client with port number
+"""
 import asyncio
 from aioconsole import ainput
 
@@ -23,8 +28,13 @@ import time
 import random
 
 from aiohttp import web
+import aiohttp
 import aiohttp_jinja2
 import jinja2
+from PIL import Image
+import io
+
+import os
 
 class ClosingException(Exception):
     pass
@@ -33,12 +43,14 @@ class ServerClosingException(Exception):
     pass
 
 class BlockChainClient:
-    def __init__(self, port, crypto_curve, signature_algo,start_reward, decrease_reward):
+    def __init__(self, port, crypto_curve, signature_algo,start_reward, decrease_reward, local_img_path, api_addr):
 
         self.PORT = port
         self.CURVE = crypto_curve
         self.SIGNATURE_ALGORITHM = signature_algo
         self.DECREASE_REWAD = decrease_reward
+        self.IMG_PATH = local_img_path
+        self.API_ADDR = api_addr
 
         self.reward = start_reward
 
@@ -58,6 +70,11 @@ class BlockChainClient:
 
         self.img_library = {}
         self.own_data = []
+
+        # Create a local_img folder
+        if not os.path.isdir(self.IMG_PATH):
+            os.mkdir(self.IMG_PATH)
+
 
     async def send_to_server(self, server):
         while True:
@@ -414,8 +431,55 @@ class BlockChainClient:
         final_address = base58.b58encode(codecs.decode(bit_25_address, 'hex'))
         return final_address.decode()
 
+    async def delete_files(self):
+        filelist = [f for f in os.listdir(self.IMG_PATH) if f.endswith(".png") ]
+        for f in filelist:
+            os.remove(os.path.join(self.IMG_PATH, f))
+            await asyncio.sleep(0.0)
+
+    async def save_image(self, bytes, save_path):
+        await asyncio.sleep(0.0)
+
+    async def download_imgs(self, np_array):
+        async with aiohttp.ClientSession() as session:
+
+            content_type = 'image/jpeg'
+            headers = {'content-type': content_type}
+
+            async with session.post(self.API_ADDR, data=np_array.tostring(), headers=headers) as resp:
+                print(resp.status)
+                import sys
+                bytes = await resp.content.read(20000)
+                print(sys.getsizeof(bytes))
+                save_path = os.path.join(self.IMG_PATH, f"{hashlib.sha256(bytes).hexdigest()}.png")
+
+                f = open(save_path, 'wb')
+                f.write(bytearray(bytes))
+                f.close()
+
+                return f"{hashlib.sha256(bytes).hexdigest()}.png"
+
+    async def fetch_all_imgs(self):
+        all_path = []
+        for a in self.own_data:
+            save_path = await self.download_imgs(a)
+            all_path.append(save_path)
+            await asyncio.sleep(0.0)
+        return all_path
+
     @aiohttp_jinja2.template('transaction_page.jinja2')
     async def main_page(self, request):
+        # Everytime main page is updated.
+        # Delete everyting in folder
+        print("runnnnn")
+        asyncio.ensure_future(self.delete_files())
+        # download a new one that will return the path
+        file_paths = await self.fetch_all_imgs()
+        print(file_paths)
+
+        names = [f[:8]for f in file_paths]
+        print(names)
+
         return {
             'address': self.address,
             'static_path_img': request.app.router['img'].url_for(filename=''),
@@ -425,7 +489,9 @@ class BlockChainClient:
             'static_path_bsjs': request.app.router['boot_js'].url_for(filename=''),
             'static_path_esjs': request.app.router['esa_js'].url_for(filename=''),
             'self_address': self.address,
-            'current_money': self.chain.get_money().get(self.address, 0.0)
+            'current_money': self.chain.get_money().get(self.address, 0.0),
+            'img_paths': file_paths,
+            'img_name': names
         }
 
     async def create_obj_web(self, request):
@@ -490,6 +556,6 @@ if __name__ == '__main__':
     START_REWARD = 50.0
     DECREASE_REWARD = 10
 
-    client = BlockChainClient(args.port, CURVE, SIGNATURE_ALGORITHM, START_REWARD, DECREASE_REWARD)
+    client = BlockChainClient(args.port, CURVE, SIGNATURE_ALGORITHM, START_REWARD, DECREASE_REWARD, "templates/images", "http://0.0.0.0:5000/api/test")
     print(f"Running on Address: {client.address}")
     client.run()

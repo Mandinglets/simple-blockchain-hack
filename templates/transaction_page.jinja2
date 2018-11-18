@@ -94,49 +94,23 @@
         </div>
 
         <div class="row" align="center">
-          <div class="col-lg-3 mx-auto">
-            <div class="container-fluid">
-              <img src="{{static_path_img}}sampleimage.png" style="width:128px;height:128px;">
+          {% for p in img_paths %}
+            <div class="col-lg-3 mx-auto">
+              <div class="container-fluid">
+                <img src="{{static_path_img}}{{p}}" style="width:128px;height:128px;">
+              </div>
             </div>
-          </div>
-          <div class="col-lg-3 mx-auto">
-            <div class="container-fluid">
-              <img src="{{static_path_img}}sampleimage.png" style="width:128px;height:128px;">
-            </div>
-          </div>
-          <div class="col-lg-3 mx-auto">
-            <div class="container-fluid">
-              <img src="{{static_path_img}}sampleimage.png" style="width:128px;height:128px;">
-            </div>
-          </div>
-          <div class="col-lg-3 mx-auto">
-            <div class="container-fluid">
-              <img src="{{static_path_img}}sampleimage.png" style="width:128px;height:128px;">
-            </div>
-          </div>
+          {% endfor %}
         </div>
 
         <div class="row" align="center">
+          {% for n in img_name %}
           <div class="col-lg-3 mx-auto">
             <div class="container-fluid">
-              <h3>King Phu I</h3>
+              <h3>{{n}}</h3>
             </div>
           </div>
-          <div class="col-lg-3 mx-auto">
-            <div class="container-fluid">
-              <h3>King Phu II</h3>
-            </div>
-          </div>
-          <div class="col-lg-3 mx-auto">
-            <div class="container-fluid">
-              <h3>King Phu III</h3>
-            </div>
-          </div>
-          <div class="col-lg-3 mx-auto">
-            <div class="container-fluid">
-              <h3>King Phu IV</h3>
-            </div>
-          </div>
+          {% endfor %}
         </div>
 
         <div class="row" align="center">
@@ -145,10 +119,9 @@
               <div class="form-group">
                   <label for="exampleFormControlSelect1">Select Legend</label>
                   <select class="form-control" id="exampleFormControlSelect1">
-                    <option>King Phu I</option>
-                    <option>King Phu II</option>
-                    <option>King Phu III</option>
-                    <option>King Phu IV</option>
+                    {% for n in img_name %}
+                    <option>{{n}}</option>
+                    {% endfor %}
                   </select>
                 </div>
 
@@ -246,6 +219,8 @@
                             alert(data);
                         }else{
                             alert("Done, Now wait for the chain to update");
+                            // Use this fornow
+                            window.location.reload();
                         }
                     }
                 });
