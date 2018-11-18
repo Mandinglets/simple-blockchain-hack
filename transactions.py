@@ -14,7 +14,7 @@ class MoneyTransation(Transaction):
         super().__init__(message, signature)
 
         self.sender_address = message['sender_address']
-        self.public_key_x = message['public_key']
+        self.public_key = message['public_key']
         self.receiver_address = message['receiver_address']
         self.value = message['value']
 
