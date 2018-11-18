@@ -15,7 +15,7 @@ import warnings
 import numpy as np
 
 from helper import StupidPublicKey
-from transactions import MoneyTransation, CreateObject
+from transactions import MoneyTransation, CreateObject, GetDataObject, ResponseDataObject
 from block import Block
 from block_chain import BlockChain
 
@@ -25,8 +25,6 @@ import random
 from aiohttp import web
 import aiohttp_jinja2
 import jinja2
-
-import flask
 
 class ClosingException(Exception):
     pass
@@ -58,7 +56,8 @@ class BlockChainClient:
         self.fucking_delay = 0
         self.create_fee = 5
 
-        self.img_library = []
+        self.img_library = {}
+        self.own_data = []
 
     async def send_to_server(self, server):
         while True:
@@ -121,8 +120,8 @@ class BlockChainClient:
 
         # Create numpy array 1x100
         new_data = np.random.randn(1, 100)
-        self.img_library.append(new_data)
         data_hash = hashlib.sha256(pickle.dumps(new_data.tostring())).hexdigest()
+        self.img_library[data_hash] = new_data
 
         message = {
             "sender_address": self.address,
@@ -151,8 +150,24 @@ class BlockChainClient:
             print(self.mempool)
         elif data[0] == "show_money":
             print(self.chain.get_money())
+        elif data[0] == "show_owner":
+            print(self.chain.get_owner())
+        elif data[0] == "send_object_request":
+            await self.get_own_data()
+        elif data[0] == "show_library":
+            asyncio.ensure_future(self.print_library())
+        elif data[0] == "show_own_data":
+            asyncio.ensure_future(self.print_own_data())
         else:
             print("Command not Found")
+
+    async def print_own_data(self):
+        for v in self.own_data:
+            print(f"{v[:, :3]}")
+
+    async def print_library(self):
+        for k, v in self.img_library.items():
+            print(f"{k}: {v[:, :3]}")
 
     async def create_block(self, data):
         self.mempool.append(data)
@@ -174,6 +189,17 @@ class BlockChainClient:
             print('\n\n')
             print(c)
             await asyncio.sleep(0.0)
+
+    async def get_own_data(self):
+        warnings.warn("might block")
+        owned_hash = self.chain.get_owner().get(self.address, [])
+        for o in owned_hash:
+            message = {
+                "sender_address": self.address,
+                "public_key": self.public_key
+            }
+            sig = self._private_key.sign(pickle.dumps(message), self.SIGNATURE_ALGORITHM)
+            await self.send_object_server(GetDataObject(message, sig, o))
 
     async def parse_server_message(self, data):
         data = pickle.loads(data)
@@ -213,6 +239,12 @@ class BlockChainClient:
 
                 self.mine_task.cancel()
                 self.is_mining = False
+
+                # Everytime chain is updated get the new data. Inefficient
+                warnings.warn("Not efficient requesting everytime")
+                self.own_data = []
+                await self.get_own_data()
+
             else:
                 print("Can't Add sth wrong")
 
@@ -228,9 +260,21 @@ class BlockChainClient:
                 print("transaction obj in create object isn't right")
             else:
                 if self.is_mining:
-                    self.mempool(data)
+                    self.mempool.append(data)
                 else:
                     await self.create_block(data)
+        elif isinstance(data, GetDataObject):
+            if self.check_signature(data.message, data.signature):
+                if data.wanted_hash in self.img_library:
+                    response =  ResponseDataObject(self.img_library[data.wanted_hash], data.sender_address)
+                    await self.send_object_server(response)
+        elif isinstance(data, ResponseDataObject):
+            if data.send_to_address == self.address:
+                if hashlib.sha256(pickle.dumps(data.data.tostring())).hexdigest() in self.chain.get_owner()[self.address]:
+                    print("Get Data!!")
+                    self.own_data.append(data.data)
+                else:
+                    print("Hash isn't right")
         else:
             print("Getting Weird Object")
             print(data)

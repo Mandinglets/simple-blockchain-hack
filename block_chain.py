@@ -32,6 +32,17 @@ class BlockChain:
 
         return money
 
+    def get_owner(self):
+        owner = {}
+        for c in self.data['content']:
+            for t in c.transaction_list:
+                if isinstance(t, CreateObject):
+                    if t.sender_address in owner:
+                        owner[t.sender_address].append(t.data_hash)
+                    else:
+                        owner[t.sender_address] = [t.data_hash]
+        return owner
+
     def total_transaction_list(self, t_list):
         change = {}
         for t in t_list:

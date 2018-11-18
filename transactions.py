@@ -38,6 +38,27 @@ class MoneyTransation(Transaction):
     def self_hash(self):
         return hashlib.sha256(pickle.dumps(str(self))).hexdigest()
 
+class GetDataObject(Transaction):
+    def __init__(self, message, signature, wanted_hash):
+        super().__init__(message, signature)
+        self.sender_address = message['sender_address']
+        self.public_key = message['public_key']
+        self.wanted_hash = wanted_hash
+
+    def self_hash(self):
+        pass
+
+class ResponseDataObject:
+    def __init__(self, data, send_to_address):
+        self.data = data
+        self.send_to_address = send_to_address
+
+    def self_hash(self):
+        pass
+
+    def data_hash(self):
+        return hashlib.sha256(pickle.dumps(self.data.tostring())).hexdigest()
+
 class CreateObject(Transaction):
     def __init__(self, message, signature, transaction_to_system):
         super().__init__(message, signature)

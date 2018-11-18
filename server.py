@@ -22,7 +22,7 @@ async def handle_connection(reader, writer):
     all_clients.add(writer)
 
     while True:
-        data = await reader.read(4048)
+        data = await reader.read(10000)
         if data is None or len(data) == 0:
             break
 
