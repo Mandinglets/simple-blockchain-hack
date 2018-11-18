@@ -25,13 +25,15 @@ from aiohttp import web
 import aiohttp_jinja2
 import jinja2
 
+import flask
+
 class ClosingException(Exception):
     pass
 
 class ServerClosingException(Exception):
     pass
 
-class BlockChainClient:    
+class BlockChainClient:
     def __init__(self, port, crypto_curve, signature_algo,start_reward, decrease_reward):
 
         self.PORT = port
@@ -80,10 +82,10 @@ class BlockChainClient:
     async def send_transations(self, address, value):
         # Check Address
         if address == self.address:
-            print("That is your address")
+            return "That is your address"
         elif self.check_address(address):
             if not self.chain.get_money().get(self.address, 0) >= value:
-                print("Not enough Fund LOL")
+                return "Not enough Fund LOL"
             else:
                 message = {
                     "sender_address": self.address,
@@ -98,7 +100,7 @@ class BlockChainClient:
                 # Sending message
                 await self.send_object_server(send_object)
         else:
-            print("Address not correct")
+            return "Address not correct"
 
     async def parse_input(self, command):
         data = command.split(' ')
@@ -314,10 +316,58 @@ class BlockChainClient:
         final_address = base58.b58encode(codecs.decode(bit_25_address, 'hex'))
         return final_address.decode()
 
+    @aiohttp_jinja2.template('transaction_page.jinja2')
+    async def main_page(self, request):
+        return {
+            'address': self.address,
+            'static_path_img': request.app.router['img'].url_for(filename=''),
+            'static_path_scl': request.app.router['scl'].url_for(filename=''),
+            'static_path_css': request.app.router['css'].url_for(filename=''),
+            'static_path_jqjs': request.app.router['jqjs'].url_for(filename=''),
+            'static_path_bsjs': request.app.router['boot_js'].url_for(filename=''),
+            'static_path_esjs': request.app.router['esa_js'].url_for(filename=''),
+            'self_address': self.address
+        }
+
+    async def transact_web(self, request):
+        data = await request.post()
+
+        address = data['address']
+        value = float(data['val'])
+
+        result = await self.send_transations(address, value)
+
+        return web.Response(text=result)
+
+    async def init_webserver(self, port):
+        app = web.Application()
+
+        aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader('templates/'))
+
+        routes = [
+            web.get('/', self.main_page),
+            web.post('/transact', self.transact_web)
+        ]
+        app.add_routes(routes)
+
+        app.router.add_static("/sample_img", 'templates/images', name="img")
+        app.router.add_static("/scrolling", 'templates/js', name="scl")
+        app.router.add_static("/css", 'templates/css', name="css")
+        app.router.add_static("/jquery_js", 'templates/vendor/jquery', name="jqjs")
+        app.router.add_static("/boot_js", 'templates/vendor/bootstrap/js', name="boot_js")
+        app.router.add_static("/es_js", 'templates/vendor/jquery-easing/', name="esa_js")
+
+        runner = web.AppRunner(app)
+
+        await runner.setup()
+        site = web.TCPSite(runner, 'localhost', port)
+        await site.start()
+
     def run(self):
         try:
             self.loop = asyncio.get_event_loop()
             self.client, self.server = self.loop.run_until_complete(self.open_connection(self.loop))
+            self.loop.run_until_complete(self.init_webserver(self.PORT))
             self.loop.run_until_complete(self.start_connection(self.server, self.client))
         except ServerClosingException as e:
             print("Server just closed")
