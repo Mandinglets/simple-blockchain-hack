@@ -12,9 +12,10 @@ import codecs
 import base58
 import pickle
 import warnings
+import numpy as np
 
 from helper import StupidPublicKey
-from transactions import MoneyTransation
+from transactions import MoneyTransation, CreateObject
 from block import Block
 from block_chain import BlockChain
 
@@ -55,6 +56,9 @@ class BlockChainClient:
 
         self.is_mining = False
         self.fucking_delay = 0
+        self.create_fee = 5
+
+        self.img_library = []
 
     async def send_to_server(self, server):
         while True:
@@ -102,6 +106,35 @@ class BlockChainClient:
         else:
             return "Address not correct"
 
+    async def create_object(self):
+        if not self.chain.get_money().get(self.address, 0) >= self.create_fee:
+            return "Not enough Fund LOL"
+
+        message = {
+            "sender_address": self.address,
+            "public_key": self.public_key,
+            "receiver_address": "system",
+            "value": self.create_fee
+        }
+        sig = self._private_key.sign(pickle.dumps(message), self.SIGNATURE_ALGORITHM)
+        system_transaction = MoneyTransation(message, sig)
+
+        # Create numpy array 1x100
+        new_data = np.random.randn(1, 100)
+        self.img_library.append(new_data)
+        data_hash = hashlib.sha256(pickle.dumps(new_data.tostring())).hexdigest()
+
+        message = {
+            "sender_address": self.address,
+            "public_key": self.public_key,
+            "data_hash": data_hash
+        }
+
+        sig = self._private_key.sign(pickle.dumps(message), self.SIGNATURE_ALGORITHM)
+        create_obj = CreateObject(message, sig, system_transaction)
+
+        await self.send_object_server(create_obj)
+
     async def parse_input(self, command):
         data = command.split(' ')
         if data[0] == "pay":
@@ -121,6 +154,20 @@ class BlockChainClient:
         else:
             print("Command not Found")
 
+    async def create_block(self, data):
+        self.mempool.append(data)
+        self.mempool.append(MoneyTransation.create_reward(self.address, self.reward))
+
+        if self.check_multiple_transactions(self.mempool):
+            block = Block(self.chain.data['count'],
+                          time.time(),
+                          self.chain.data['content'][-1].header.self_hash(),
+                          self.mempool)
+
+            self.mempool = []
+            self.is_mining = True
+            self.mine_task = asyncio.ensure_future(self.mine(block))
+
     async def print_chain(self):
         print(f"Count: {self.chain.data['count']}")
         for c in self.chain.data['content']:
@@ -135,23 +182,12 @@ class BlockChainClient:
             # Start creating your own block
             if not self.check_signature(data.message, data.signature):
                 print("Transaction Not accepted")
-                return
 
-            if self.is_mining:
-                self.mempool.append(data)
             else:
-                self.mempool.append(data)
-                self.mempool.append(MoneyTransation.create_reward(self.address, self.reward))
-
-                if self.check_multiple_transactions(self.mempool):
-                    block = Block(self.chain.data['count'],
-                                  time.time(),
-                                  self.chain.data['content'][-1].header.self_hash(),
-                                  self.mempool)
-
-                    self.mempool = []
-                    self.is_mining = True
-                    self.mine_task = asyncio.ensure_future(self.mine(block))
+                if self.is_mining:
+                    self.mempool.append(data)
+                else:
+                    await self.create_block(data)
 
         elif isinstance(data, str):
             if data == "FIRST_USER":
@@ -184,6 +220,17 @@ class BlockChainClient:
             if self.chain.data['count'] == 0:
                 self.chain = data
                 print("Chain Added")
+        elif isinstance(data, CreateObject):
+            # who ever won the mine get to save the object
+            if not self.check_signature(data.message, data.signature):
+                print("Create object isn't accepted")
+            elif not self.check_signature(data.transaction_to_system.message, data.transaction_to_system.signature):
+                print("transaction obj in create object isn't right")
+            else:
+                if self.is_mining:
+                    self.mempool(data)
+                else:
+                    await self.create_block(data)
         else:
             print("Getting Weird Object")
             print(data)
@@ -262,6 +309,9 @@ class BlockChainClient:
             print("LIST TRANSACTION: run out of funds")
             return False
 
+        # Check for ownership
+        warnings.warn("Check for ownership not done")
+
         if not all(self.check_signature(t.message, t.signature) for t in transaction_list):
             print("LIST TRANSACTION: wrong signature")
             return False
@@ -283,6 +333,7 @@ class BlockChainClient:
             return True
 
         if not message['sender_address'] == self.generate_address(message['public_key']):
+            print("Sender Address isn't the same as the generate addresss")
             return False
 
         pub = ec.EllipticCurvePublicNumbers(
@@ -333,6 +384,11 @@ class BlockChainClient:
             'current_money': self.chain.get_money().get(self.address, 0.0)
         }
 
+    async def create_obj_web(self, request):
+        data = await request.post()
+        result = await self.create_object()
+        return web.Response(text=result)
+
     async def transact_web(self, request):
         data = await request.post()
 
@@ -349,7 +405,8 @@ class BlockChainClient:
 
         routes = [
             web.get('/', self.main_page),
-            web.post('/transact', self.transact_web)
+            web.post('/transact', self.transact_web),
+            web.post('/create_obj', self.create_obj_web),
         ]
         app.add_routes(routes)
 

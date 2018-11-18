@@ -177,7 +177,9 @@
         <div class="row" align="center">
           <div class="col-lg-12 mx-auto">
             <div class="container-fluid">
-              <br><button class="btn-lg">Create One!</button>
+              <form id='create-object' method="post">
+                  <br><button class="btn-lg" name="create" type="submit">Create One!</button>
+              </form>
             </div>
           </div>
         </div>
@@ -228,6 +230,25 @@
 
             });
         })
+
+        $(document).ready(function(){
+            $('#create-object').on('submit', function(e){
+
+                e.preventDefault();
+                $.ajax({
+                    url: "/create_obj",
+                    data: {},
+                    method: 'POST',
+                    success: function(data) {
+                        if(data != ''){
+                            alert(data);
+                        }
+                    }
+                });
+            });
+        })
+
+
     </script>
 
     <!-- Bootstrap core JavaScript -->

@@ -14,7 +14,7 @@ class MoneyTransation(Transaction):
         super().__init__(message, signature)
 
         self.sender_address = message['sender_address']
-        self.public_key = message['public_key']
+        self.public_key_x = message['public_key']
         self.receiver_address = message['receiver_address']
         self.value = message['value']
 
@@ -31,6 +31,24 @@ class MoneyTransation(Transaction):
 
     def __str__(self):
         return f"Money Transaction: {self.sender_address} -> {self.receiver_address} with value: {self.value}"
+
+    def __repr__(self):
+        return str(self)
+
+    def self_hash(self):
+        return hashlib.sha256(pickle.dumps(str(self))).hexdigest()
+
+class CreateObject(Transaction):
+    def __init__(self, message, signature, transaction_to_system):
+        super().__init__(message, signature)
+
+        self.sender_address = message['sender_address']
+        self.public_key = message['public_key']
+        self.transaction_to_system = transaction_to_system
+        self.data_hash = message['data_hash']
+
+    def __str__(self):
+        return f"Create Object: from {self.sender_address}, with transaction {str(self.transaction_to_system)}"
 
     def __repr__(self):
         return str(self)

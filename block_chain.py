@@ -1,3 +1,5 @@
+from transactions import CreateObject
+
 class BlockChain:
     def __init__(self):
         self.data = {
@@ -17,13 +19,15 @@ class BlockChain:
         money = {}
         for c in self.data['content']:
             for t in c.transaction_list:
+                if isinstance(t, CreateObject):
+                    t = t.transaction_to_system
                 # Must be in the list
                 if not t.sender_address == "system":
                     money[t.sender_address] -= t.value
 
                 if t.receiver_address in money:
                     money[t.receiver_address] += t.value
-                else:
+                elif not t.receiver_address == "system":
                     money[t.receiver_address] = t.value
 
         return money
@@ -31,6 +35,8 @@ class BlockChain:
     def total_transaction_list(self, t_list):
         change = {}
         for t in t_list:
+            if isinstance(t, CreateObject):
+                t = t.transaction_to_system
             # Must be in the list
             if not t.sender_address == "system":
                 if t.sender_address in change:
@@ -40,6 +46,6 @@ class BlockChain:
 
             if t.receiver_address in change:
                 change[t.receiver_address] += t.value
-            else:
+            elif not t.receiver_address == "system":
                 change[t.receiver_address] = t.value
         return change
